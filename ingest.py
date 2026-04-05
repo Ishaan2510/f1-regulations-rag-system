@@ -1,11 +1,8 @@
 """
 ingest.py
 ---------
-Offline ingestion pipeline. Run this ONCE to build the FAISS index.
-Think of this as the "compile" step — it transforms raw PDFs into a
-searchable vector index saved to disk.
-
-Flow: PDF files → pages → text → chunks → embeddings → FAISS index
+Updated for multi-section FIA 2026 F1 Regulations (Sections A-F).
+Parses all PDFs in data/pdfs/, chunks, embeds, and saves FAISS index.
 """
 
 import os
@@ -13,185 +10,161 @@ import pickle
 import time
 from pathlib import Path
 
-import fitz  # PyMuPDF — C++ extension wrapped in Python
+import fitz
 import faiss
 import numpy as np
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 
-# --- Configuration constants (think: #define in C++) ---
 PDF_DIR = Path("data/pdfs")
 INDEX_DIR = Path("index")
 FAISS_INDEX_PATH = INDEX_DIR / "faiss.index"
 CHUNKS_PATH = INDEX_DIR / "chunks.pkl"
 
-# BGE-small produces 384-dim embeddings. Fast on CPU, ~10ms per chunk.
-# "bge" = BAAI General Embedding. Instruction prefix improves retrieval quality.
 EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
-BGE_QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
-
-# Chunk size in characters. 512 chars ≈ 100-130 tokens for English text,
-# well within the 512-token limit of bge-small.
 CHUNK_SIZE = 512
-CHUNK_OVERLAP = 64  # Sliding window overlap to avoid boundary misses
+CHUNK_OVERLAP = 64
+
+# Maps filename keywords → human-readable section labels
+# Used in source citations shown to the user
+SECTION_LABELS = {
+    "section_a": "Section A – General Provisions",
+    "section_b": "Section B – Sporting Regulations",
+    "section_c": "Section C – Technical Regulations",
+    "section_d": "Section D – Financial (Teams)",
+    "section_e": "Section E – Financial (Power Unit Manufacturers)",
+    "section_f": "Section F – Operational Regulations",
+}
+
+
+def get_section_label(filename: str) -> str:
+    """
+    Extract a readable section label from the PDF filename.
+    In C++ terms: this is a lookup in a std::map<string, string>.
+    Falls back to the raw filename if no match found.
+    """
+    filename_lower = filename.lower()
+    for key, label in SECTION_LABELS.items():
+        if key in filename_lower:
+            return label
+    return filename  # fallback: use filename as-is
 
 
 def load_pdfs(pdf_dir: Path) -> list[dict]:
     """
-    Parse all PDFs in pdf_dir and return a list of page records.
-    Each record is a dict: { "text": str, "page": int, "source": str }
-
-    In C++ terms: vector<PageRecord> load_pdfs(path dir)
+    Parse all PDFs and return page records with section labels.
+    Each record: { text, page, source (filename), section (readable label) }
     """
     pages = []
+    pdf_files = sorted(pdf_dir.glob("*.pdf"))  # sorted for deterministic ordering
 
-    pdf_files = list(pdf_dir.glob("*.pdf"))
     if not pdf_files:
-        raise FileNotFoundError(f"No PDF files found in {pdf_dir}")
+        raise FileNotFoundError(f"No PDFs found in {pdf_dir}")
 
     for pdf_path in pdf_files:
-        print(f"Parsing: {pdf_path.name}")
-        # fitz.open() returns a Document object — think of it as
-        # constructing a Document class that wraps the PDF binary
+        section_label = get_section_label(pdf_path.name)
+        print(f"Parsing: {pdf_path.name} → {section_label}")
+
         doc = fitz.open(str(pdf_path))
+        page_count = len(doc)
 
         for page_num, page in enumerate(doc):
-            # page.get_text() extracts plain text from the PDF page.
-            # For FIA regs (single-column), this is clean. For multi-column
-            # or scanned PDFs, you would need layout analysis or OCR.
             text = page.get_text("text").strip()
-
-            # Skip blank pages — common in FIA PDFs (divider pages)
             if len(text) < 50:
                 continue
 
             pages.append({
                 "text": text,
-                "page": page_num + 1,  # 1-indexed for human display
-                "source": pdf_path.name
+                "page": page_num + 1,
+                "source": pdf_path.name,
+                "section": section_label,   # NEW: human-readable section label
+                "total_pages": page_count   # NEW: useful for context
             })
 
         doc.close()
+        print(f"  → {page_count} pages loaded")
 
-    print(f"Loaded {len(pages)} non-empty pages from {len(pdf_files)} PDF(s)")
+    print(f"\nTotal: {len(pages)} non-empty pages from {len(pdf_files)} PDFs")
     return pages
 
 
 def chunk_pages(pages: list[dict]) -> list[dict]:
     """
-    Split pages into fixed-size overlapping chunks.
-    Returns list of chunk dicts with text + inherited metadata.
-
-    In C++ terms: this is like calling std::string::substr() in a sliding
-    window loop, but LangChain handles sentence-aware boundary detection
-    so splits don't land mid-sentence.
+    Chunk pages into overlapping windows, inheriting section metadata.
     """
-    # RecursiveCharacterTextSplitter tries to split on paragraph breaks (\n\n),
-    # then sentence breaks (\n), then word breaks (" "), in that order.
-    # This is smarter than a naive character-level split.
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
         chunk_overlap=CHUNK_OVERLAP,
-        separators=["\n\n", "\n", " ", ""]  # priority-ordered split points
+        separators=["\n\n", "\n", " ", ""]
     )
 
     chunks = []
     for page in pages:
-        # split_text returns a list of strings — each is one chunk
         texts = splitter.split_text(page["text"])
-
-        for i, text in enumerate(texts):
+        for text in texts:
             chunks.append({
                 "text": text,
                 "page": page["page"],
                 "source": page["source"],
-                "chunk_id": len(chunks)  # global monotonic ID, like an array index
+                "section": page["section"],   # propagated from page record
+                "chunk_id": len(chunks)
             })
 
-    print(f"Created {len(chunks)} chunks from {len(pages)} pages")
+    # Print per-section breakdown so you can verify coverage
+    section_counts = {}
+    for c in chunks:
+        section_counts[c["section"]] = section_counts.get(c["section"], 0) + 1
+
+    print(f"\nChunk breakdown by section:")
+    for section, count in sorted(section_counts.items()):
+        print(f"  {section}: {count} chunks")
+    print(f"  TOTAL: {len(chunks)} chunks\n")
+
     return chunks
 
 
 def embed_chunks(chunks: list[dict], model: SentenceTransformer) -> np.ndarray:
-    """
-    Embed all chunk texts into dense vectors.
-    Returns a float32 numpy array of shape (n_chunks, embedding_dim).
-
-    In C++ terms: float[n][384] embed_chunks(vector<Chunk> chunks, Model& m)
-    The return value is the matrix you will insert into the FAISS index.
-    """
     texts = [chunk["text"] for chunk in chunks]
-
-    print(f"Embedding {len(texts)} chunks with {EMBEDDING_MODEL}...")
+    print(f"Embedding {len(texts)} chunks (this takes ~2-5 min on CPU)...")
     start = time.perf_counter()
 
-    # BGE models require an instruction prefix ONLY for queries, not documents.
-    # For documents we embed them as-is. This is a documented BGE convention.
     embeddings = model.encode(
         texts,
-        batch_size=32,        # Process 32 chunks at once — like a batch DMA transfer
+        batch_size=32,
         show_progress_bar=True,
-        normalize_embeddings=True  # L2-normalize so dot product == cosine similarity
+        normalize_embeddings=True
     )
 
     elapsed = time.perf_counter() - start
-    print(f"Embedding complete: {elapsed:.2f}s ({elapsed/len(texts)*1000:.1f}ms per chunk)")
-
-    # SentenceTransformer returns float32 numpy array by default
-    # FAISS requires float32 — ensure this explicitly
+    print(f"Done: {elapsed:.1f}s ({elapsed/len(texts)*1000:.1f}ms/chunk avg)")
     return embeddings.astype(np.float32)
 
 
 def build_faiss_index(embeddings: np.ndarray) -> faiss.Index:
-    """
-    Build a FAISS flat L2 index from the embedding matrix.
+    n, dim = embeddings.shape
+    print(f"Building IndexFlatL2: {n} vectors × {dim} dims")
 
-    IndexFlatL2 = brute-force exact nearest neighbor search.
-    No approximation, no training required, deterministic results.
-    For n < 10,000 chunks, this is fast enough (<1ms query time on CPU).
-
-    In C++ terms: this is like constructing a sorted array that you will
-    later binary-search — except the "search" here is a matrix multiply.
-    """
-    n_vectors, dim = embeddings.shape
-    print(f"Building FAISS IndexFlatL2: {n_vectors} vectors of dim {dim}")
-
-    # IndexFlatL2 computes squared Euclidean distance.
-    # Since we L2-normalized embeddings, L2 distance ∝ cosine distance.
-    # So this is effectively cosine similarity search.
+    # At 4000 chunks, FlatL2 query time is still <5ms — no need for IVF
     index = faiss.IndexFlatL2(dim)
-
-    # add() copies the embedding matrix into the index's internal storage
-    # After this call, index.ntotal == n_vectors
     index.add(embeddings)
 
-    print(f"FAISS index built: {index.ntotal} vectors indexed")
+    print(f"Index built: {index.ntotal} vectors")
     return index
 
 
 def save_artifacts(index: faiss.Index, chunks: list[dict]) -> None:
-    """
-    Persist the FAISS index and chunk metadata to disk.
-    The Streamlit app loads these at startup — no re-embedding on restart.
-    """
     INDEX_DIR.mkdir(parents=True, exist_ok=True)
-
     faiss.write_index(index, str(FAISS_INDEX_PATH))
-    print(f"FAISS index saved: {FAISS_INDEX_PATH}")
-
-    # chunks.pkl stores the list of dicts with text + metadata.
-    # At query time, we use FAISS to get chunk_ids, then look up this list.
-    # This is like a hash map: chunk_id → ChunkRecord.
     with open(CHUNKS_PATH, "wb") as f:
         pickle.dump(chunks, f)
-    print(f"Chunk metadata saved: {CHUNKS_PATH}")
+    print(f"Saved index → {FAISS_INDEX_PATH}")
+    print(f"Saved chunks → {CHUNKS_PATH}")
 
 
 def main():
-    print("=== TechReg Analyst — Ingestion Pipeline ===\n")
+    print("=== TechReg Analyst — Multi-Section Ingestion (FIA 2026 F1) ===\n")
 
-    # Load embedding model once. This downloads ~130MB on first run.
-    print(f"Loading embedding model: {EMBEDDING_MODEL}")
+    print(f"Loading model: {EMBEDDING_MODEL}")
     model = SentenceTransformer(EMBEDDING_MODEL)
 
     pages = load_pdfs(PDF_DIR)
@@ -200,7 +173,7 @@ def main():
     index = build_faiss_index(embeddings)
     save_artifacts(index, chunks)
 
-    print("\n=== Ingestion complete. Run app.py to start the Streamlit app. ===")
+    print("\n=== Ingestion complete. Run: streamlit run app.py ===")
 
 
 if __name__ == "__main__":
