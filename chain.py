@@ -24,18 +24,14 @@ from langchain_groq import ChatGroq
 
 load_dotenv()  # reads GROQ_API_KEY from .env into os.environ
 
-# ---------------------------------------------------------------------------
 # Configuration
-# ---------------------------------------------------------------------------
 
 GROQ_MODEL       = "llama-3.1-8b-instant"
 GROQ_TEMPERATURE = 0.0   # 0 = fully deterministic, no creative deviation
 GROQ_MAX_TOKENS  = 512   # enough for a detailed regulation answer
 
 
-# ---------------------------------------------------------------------------
 # Context builder
-# ---------------------------------------------------------------------------
 
 def build_context(chunks) -> str:
     """
@@ -57,10 +53,7 @@ def build_context(chunks) -> str:
     # Separator "---" makes boundaries clear to the LLM
     return "\n\n---\n\n".join(parts)
 
-
-# ---------------------------------------------------------------------------
 # Prompt template
-# ---------------------------------------------------------------------------
 
 # ChatPromptTemplate takes a list of (role, message) tuples.
 # "system" = sets the LLM's persona and constraints (not shown to user)
@@ -77,19 +70,6 @@ def build_context(chunks) -> str:
 
 RAG_PROMPT = ChatPromptTemplate.from_messages([
     ("system", (
-        # "You are a precise technical assistant specializing in FIA Formula 1 "
-        # "Regulations (2026 season). "
-        # "Answer questions using ONLY the context passages provided below. "
-        # "Do not use any prior knowledge or information outside the context. "
-        # "When answering, cite source numbers like [1] or [2] to show which "
-        # "passage supports each claim. "
-        # "The regulation text may use different terminology than the question — "
-        # "for example 'fuel energy flow' instead of 'fuel mass flow rate', or "
-        # "'referred to the stewards' as the consequence of a procedural violation. "
-        # "Bridge these terminology gaps using only what is explicitly stated in context. "
-        # "Only if the context contains genuinely no relevant information whatsoever, "
-        # "respond exactly with: "
-        # "'This information is not present in the provided regulation passages.'"
         "You are a technical assistant for FIA Formula 1 2026 Regulations. "
         "Your ONLY job is to answer questions from the context passages below.\n\n"
         "RULES — follow these exactly:\n"
@@ -114,10 +94,7 @@ RAG_PROMPT = ChatPromptTemplate.from_messages([
     ))
 ])
 
-
-# ---------------------------------------------------------------------------
 # LLM factory
-# ---------------------------------------------------------------------------
 
 def get_llm() -> ChatGroq:
     """
@@ -138,10 +115,7 @@ def get_llm() -> ChatGroq:
         groq_api_key=api_key
     )
 
-
-# ---------------------------------------------------------------------------
 # Main generation function
-# ---------------------------------------------------------------------------
 
 def generate_answer(query: str, chunks) -> dict:
     """
@@ -188,10 +162,7 @@ def generate_answer(query: str, chunks) -> dict:
             "context_used":   context
         }
 
-
-# ---------------------------------------------------------------------------
 # Standalone test
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     from retriever import Retriever

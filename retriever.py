@@ -25,9 +25,7 @@ import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer, CrossEncoder
 
-# ---------------------------------------------------------------------------
 # Configuration
-# ---------------------------------------------------------------------------
 
 FAISS_INDEX_PATH = Path("index/faiss.index")
 CHUNKS_PATH      = Path("index/chunks.pkl")
@@ -46,10 +44,7 @@ RERANKER_TOP_K   = 5    # Final results after cross-encoder (precision phase)
 # Fetch 3× more upfront so we still have 20 candidates after filtering.
 FAISS_FETCH_MULTIPLIER = 2
 
-
-# ---------------------------------------------------------------------------
 # Output data structure
-# ---------------------------------------------------------------------------
 
 @dataclass
 class RetrievedChunk:
@@ -77,9 +72,7 @@ class RetrievedChunk:
     cross_encoder_score: float
 
 
-# ---------------------------------------------------------------------------
 # Retriever class
-# ---------------------------------------------------------------------------
 
 class Retriever:
     """
@@ -141,8 +134,6 @@ class Retriever:
         self.cross_encoder = CrossEncoder(RERANKER_MODEL)
 
         print("Retriever ready.\n")
-
-    # -----------------------------------------------------------------------
 
     def retrieve(
         self,
@@ -239,9 +230,7 @@ class Retriever:
                 "total_retrieval_ms": latencies["bi_encoder_ms"]
             }
 
-        # ===================================================================
         # STAGE 2: Cross-encoder reranking
-        # ===================================================================
         t2 = time.perf_counter()
 
         # Build (query, passage) pairs for the cross-encoder.
@@ -292,10 +281,7 @@ class Retriever:
 
         return results, latencies
 
-
-# ---------------------------------------------------------------------------
 # Standalone test — run this file directly to verify retrieval works
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     print("=== Retriever Standalone Test ===\n")

@@ -27,7 +27,7 @@ Fix: strip the header pattern from each page's text before chunking.
 import pickle
 import time
 from pathlib import Path
-import re           # Regular expressions for text cleaning
+import re        
 
 import fitz          # PyMuPDF: C++ PDF parser with Python bindings
 import faiss         # Facebook AI Similarity Search
@@ -35,9 +35,7 @@ import numpy as np
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 
-# ---------------------------------------------------------------------------
-# Configuration — treat these like #define constants in C++
-# ---------------------------------------------------------------------------
+# Configuration
 
 PDF_DIR = Path("data/pdfs")
 INDEX_DIR = Path("index")
@@ -62,10 +60,7 @@ SECTION_LABELS = {
     "section_f": "Section F – Operational Regulations",
 }
 
-
-# ---------------------------------------------------------------------------
 # Step 1: PDF Parsing
-# ---------------------------------------------------------------------------
 
 def get_section_label(filename: str) -> str:
     """
@@ -193,9 +188,7 @@ def clean_page_text(text: str) -> str:
 
     return "\n".join(cleaned)
 
-# ---------------------------------------------------------------------------
 # Step 2: Chunking
-# ---------------------------------------------------------------------------
 
 def chunk_pages(pages: list[dict]) -> list[dict]:
     """
@@ -255,10 +248,7 @@ def chunk_pages(pages: list[dict]) -> list[dict]:
 
     return chunks
 
-
-# ---------------------------------------------------------------------------
 # Step 3: Embedding
-# ---------------------------------------------------------------------------
 
 def embed_chunks(chunks: list[dict], model: SentenceTransformer) -> np.ndarray:
     """
@@ -309,10 +299,7 @@ def embed_chunks(chunks: list[dict], model: SentenceTransformer) -> np.ndarray:
 
     return embeddings.astype(np.float32)  # FAISS requires float32 explicitly
 
-
-# ---------------------------------------------------------------------------
 # Step 4: FAISS Index
-# ---------------------------------------------------------------------------
 
 def build_faiss_index(embeddings: np.ndarray) -> faiss.Index:
     """
@@ -350,10 +337,7 @@ def build_faiss_index(embeddings: np.ndarray) -> faiss.Index:
     print(f"  Indexed: {index.ntotal} vectors ✓")
     return index
 
-
-# ---------------------------------------------------------------------------
 # Step 5: Save to Disk
-# ---------------------------------------------------------------------------
 
 def save_artifacts(index: faiss.Index, chunks: list[dict]) -> None:
     """
@@ -384,10 +368,6 @@ def save_artifacts(index: faiss.Index, chunks: list[dict]) -> None:
     print(f"  faiss.index: {index_size:.1f} MB")
     print(f"  chunks.pkl:  {chunks_size:.1f} MB")
 
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 def main():
     print("=" * 50)
