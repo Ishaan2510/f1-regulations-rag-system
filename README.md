@@ -2,8 +2,6 @@
 
 > **A production-grade Retrieval-Augmented Generation (RAG) system for querying FIA Formula 1 2026 Regulations in plain English.**
 
-Built as a portfolio project targeting Machine Learning Engineer internships. Every component — chunking strategy, embedding model selection, two-stage retrieval, hallucination mitigation — was chosen deliberately and benchmarked.
-
 ---
 
 ## Table of Contents
@@ -45,7 +43,7 @@ TechReg Analyst lets you ask natural language questions over all six sections of
 
 ## Live Demo
 
-🚀 **[techreg-analyst.streamlit.app](https://techreg-analyst.streamlit.app)** *(Streamlit Community Cloud)*
+🚀 **[F1 - Regulations RAG](https://f1-regulations-rag-system.streamlit.app/)** *(Streamlit Community Cloud)*
 
 ---
 
@@ -541,7 +539,7 @@ Building this system taught me several things that weren't obvious upfront:
 
 **Asymmetric embedding is not optional for BGE.** The BGE family requires the query prefix at inference time. Missing this silently degrades retrieval by roughly 10–15 percentage points on MTEB — it just returns worse results with no error.
 
-**Python version compatibility matters more than you'd think.** PyMuPDF 1.24.5 doesn't ship pre-built wheels for Python 3.14. This isn't documented prominently. Python 3.11 is the stable target for production ML stacks as of 2025.
+**Python version compatibility matters more than you'd think.** PyMuPDF 1.24.5 doesn't ship pre-built wheels for Python 3.14. This isn't documented prominently. Python 3.11 is the stable target for production ML stacks as of 2026.
 
 **CE scores being negative is expected, not a bug.** The cross-encoder (ms-marco-MiniLM) was trained on MS MARCO web data, not regulatory text. Absolute scores are meaningless — relative ordering is what matters. The highest score in a batch is the most relevant chunk, regardless of its sign.
 
@@ -549,8 +547,4 @@ Building this system taught me several things that weren't obvious upfront:
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
-
----
-
-*Built by Ishaan — CS undergrad at PDEU + IIT Madras (Data Science). Portfolio: [github.com/your-username](https://github.com/your-username)*
+*Built by Ishaan — CS undergrad at PDEU + IIT Madras (Data Science). Portfolio: [Github Profile](https://github.com/Ishaan2510)*
