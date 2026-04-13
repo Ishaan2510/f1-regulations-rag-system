@@ -1,0 +1,11 @@
+query_id,description,section_expected,retrieval_ms,llm_ms,total_ms,top1_section,top1_ce_score,section_match,answer_preview
+1,DAB activation rules,Section B,4303.2,559.2,4862.4,Section B – Sporting Regulations,6.531,Yes,The rules for Driver Adjustable Bodywork activation are as follows:  - The driver may only activate the Driver Adjustabl
+2,Fuel energy flow limit,Section C,715.0,322.7,1037.6,Section C – Technical Regulations,1.925,Yes,"The maximum fuel energy flow rate is 3000MJ/h [2, C5.2.3]."
+3,Weighbridge procedure,Section B,525.1,397.0,922.2,Section B – Sporting Regulations,-4.510,Yes,"If a driver misses the weighbridge, they must go to the FIA garage immediately on their return to the Pit Lane in order "
+4,Car minimum weight,Section C,1490.6,564.7,2055.4,Section C – Technical Regulations,6.095,Yes,"The minimum weight requirements for an F1 car are as follows:  - During the Sprint Qualifying and Qualifying sessions, t"
+5,Tyre compound rules,Section B,584.0,5579.9,6163.9,Section B – Sporting Regulations,3.358,Yes,"According to Article B6.1.2, at least one of the tyre specifications used during the race must be a mandatory dry-weathe"
+6,Cost cap limit,Section D,475.2,9315.4,9790.5,Section E – Financial (Power Unit Manufacturers),1.902,No,This information is not present in the provided regulation passages.
+7,Curfew regulations,Section F,1403.7,8478.7,9882.4,Section B – Sporting Regulations,-2.075,No,"According to [4], the period beginning twenty-nine (29) hours before the scheduled start of FP1 and ending two (2) hours"
+8,DRS detection zones,Section B,2881.9,7033.6,9915.5,Section B – Sporting Regulations,-1.820,Yes,"According to the provided passages, the DRS detection and activation point rules are as follows:  - The location of the "
+9,Survival cell materials,Section C,609.1,9830.0,10439.1,Section C – Technical Regulations,6.295,Yes,"Based on the provided passages, there is no explicit mention of prohibited materials in the survival cell construction. "
+10,False start penalties,Section B,1316.8,8488.3,9805.1,Section B – Sporting Regulations,6.333,Yes,"According to Article B5.11.1, the stewards will impose one of the following penalties on any driver who is judged to hav"
