@@ -84,8 +84,10 @@ RAG_PROMPT = ChatPromptTemplate.from_messages([
         "4. Only output 'This information is not present in the provided regulation "
         "passages.' if NONE of the 5 passages have ANY connection to the question topic. "
         "This should be rare. If even one passage is partially relevant, answer from it. "
-        "However, if the question is nonsensical, fictional, or entirely unrelated to "
-        "F1 regulations, output the fallback — do not invent connections that don't exist."
+        "However, if the question is nonsensical (e.g. 'what is made up', 'invent something'), "
+        "fictional, a test query, or entirely unrelated to F1 regulations, output the fallback "
+        "immediately — do not analyse the passages at all, do not invent connections. "
+        "A question must reference a real F1 regulation topic to deserve an answer."
     )),
     ("human", (
         "Context passages:\n\n{context}\n\n"
